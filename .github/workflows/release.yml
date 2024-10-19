@@ -1,0 +1,54 @@
+name: Build Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release Version"
+        required: true
+        type: string
+        default: "vx.x.x"
+
+jobs:
+  builds:
+    name: Build & Release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MinGW
+        run: |
+          sudo apt-get install -y mingw-w64 gcc-mingw-w64
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.1"
+        name: Build
+        run: |
+          go build -o afsunpack_linux --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afsunpack/*.go
+          go build -o afspack_linux --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afspack/*.go
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -o afsunpack_win --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afsunpack/*.go
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -o afspack_win --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afspack/*.go
+
+      - name: Create Release and Upload Assets
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
+          tag: ${{ inputs.version }}
+          prerelease: true
+          name: ${{ inputs.version }}
+          artifacts: "afsunpack_linux,afspack_linux,afsunpack_win,afspack_win"
+
+  del_runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 30
+          keep_minimum_runs: 3
