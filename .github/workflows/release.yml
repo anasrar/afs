@@ -25,7 +25,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23.1"
-        name: Build
+
+      - name: Build
         run: |
           go build -o afsunpack_linux --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afsunpack/*.go
           go build -o afspack_linux --ldflags="-s -w -X 'main.GitCommitHash=$(git log -1 --pretty=format:%h)'" cmd/afspack/*.go
